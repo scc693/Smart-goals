@@ -1,92 +1,53 @@
-# Project: Gamified Goal Tracker PWA
+# Project Prompt: Gamified Goal Tracker PWA
 
-## Overview
-Build a Progressive Web App (PWA) for goal tracking that gamifies the experience. The app supports offline functionality, allowing users to track progress without an internet connection. It works for individual users and supports groups for social competition via leaderboards.
+I want you to build a Goal Tracking Progressive Web App (PWA) from scratch. The app will gamify goal setting, track progress, and support social competition.
 
-## Tech Stack
-*   **Frontend:** React (Vite)
-*   **UI Framework:** Material UI (MUI)
-*   **Backend & Database:** Firebase (Authentication, Firestore, Hosting)
-*   **PWA Support:** `vite-plugin-pwa` + Firestore Offline Persistence
+## Core Architecture
+*   **Tech Stack:** React (Vite)
+*   **UI Framework:** Material UI (MUI) or similar polished UI library.
+*   **Backend:** Firebase (Authentication, Firestore, Hosting).
+*   **Offline Functionality:** The app **must** work fully offline. Use Firebase Firestore's offline persistence and a Service Worker (e.g., via `vite-plugin-pwa`) to cache the app shell.
 
-## Core Features & Requirements
+## Functional Requirements
 
-### 1. Goal Management
-*   **Hierarchy:** Goals can have **Sub-goals**, and Sub-goals can have **Steps**.
-*   **Progress Tracking:**
-    *   Each Goal has a progress bar.
-    *   Each Sub-goal should have its own progress bar.
-    *   Progress is calculated based on the completion of Steps.
+### 1. Goal Structure & Tracking
+*   **Hierarchy:** Users create **Goals**. Each Goal can have multiple **Sub-goals**. Each Sub-goal can have multiple **Steps**.
+*   **Progress Bars:**
+    *   **Goal Level:** A progress bar that fills up as Sub-goals are completed.
+    *   **Sub-goal Level:** A progress bar that fills up as Steps are completed.
 *   **Deadlines:** Goals can have an optional deadline or be open-ended.
-*   **Personal Rewards:** Users can assign specific text-based rewards for themselves upon completion of sub-goals or goals (e.g., "Buy a coffee"). These are for self-motivation and **not** tied to the points system.
+*   **Personal Rewards:** Users can enter a text-based "Personal Reward" for themselves (e.g., "Buy a new game") linked to the completion of a Goal or Sub-goal. This is for self-motivation and is distinct from the gamification points.
 
 ### 2. Gamification & Points
-*   **Points System:** Users earn points for completing Steps, Sub-goals, and Goals.
-*   **Leaderboard:** A social leaderboard ranks members within a Group based on their points.
-*   **Digital Trophies:** (Future) Visual achievements for milestones.
+*   **Earning Points:** Users earn points for completing:
+    *   Steps (Small amount)
+    *   Sub-goals (Medium amount)
+    *   Goals (Large amount)
+*   **Digital Trophies:** The system should support unlocking visual trophies/badges for milestones (e.g., "First Goal Completed", "1000 Points").
 
-### 3. Group Dynamics
-*   **Solo vs. Group:** Users start in "Solo Mode". They can choose to **Create** a new group or **Join** an existing group using a Group ID.
-*   **Shared Goals:** Within a group, goals are shared/visible to other members (unless marked Private).
-*   **Private Goals:** Users can mark specific goals as "Private" to exclude them from the feed/leaderboard visibility, though points still count (or can be excluded from leaderboard if desired).
-*   **Admins:**
-    *   The user who creates a group is the Admin.
-    *   Admins can appoint other admins.
-    *   **Group Awards:** Admins define redeemable awards (e.g., "Gift Card", "Back Massage") that cost points.
-    *   *Note:* Regular members view and redeem these awards (Redemption UI pending).
+### 3. Groups & Social (The "Game" Aspect)
+*   **Modes:** The app supports both **Solo** users and **Groups**.
+*   **Creating/Joining Groups:**
+    *   Users can create a new group (becoming the Admin).
+    *   Users can join an existing group using a Group ID or invite code.
+*   **Leaderboards:** Each group has a leaderboard ranking members by their current point total.
+*   **Shared Goals:** Within a group, goals should be visible to other members to foster accountability.
+*   **Private Goals:** Users must have the option to mark specific goals as "Private", hiding them from the group feed/leaderboard details, but keeping the points (or having an option to exclude them from the leaderboard).
 
-### 4. Offline Capabilities
-*   **Full Functionality:** The app must allow viewing and editing goals while offline.
-*   **Sync:** Changes sync automatically when connection is restored.
-*   **Conflict Resolution:** "Last Write Wins" strategy for concurrent edits on shared data.
+### 4. Admin & Awards System
+*   **Admin Role:** The Group Creator is the Admin and can appoint others.
+*   **Redeemable Awards:**
+    *   Admins can define "Group Awards" (e.g., "Gift Card", "Free Lunch", "Bragging Rights") with a specific Point Cost.
+    *   Group members can "Redeem" their points for these awards.
+    *   *Note:* Personal rewards (set by the user for themselves) are different from these Group Awards (set by the Admin).
 
-### 5. Authentication
-*   **Methods:** Email/Password and Google Sign-In.
-*   **Security:** Standard Firebase Auth security.
+### 5. Authentication & Sync
+*   **Auth:** Support Email/Password and Google Sign-In.
+*   **Data Sync:** Data must sync seamlessly between devices when online.
+*   **Conflict Resolution:** Handle concurrent edits (e.g., if two users edit a shared group goal offline) using a "Last Write Wins" strategy.
 
-## Data Model (Firestore)
-
-**Users (`users` collection)**
-*   `uid`: string
-*   `displayName`: string
-*   `email`: string
-*   `currentPoints`: number
-*   `groupIds`: array of strings (List of groups the user belongs to)
-
-**Groups (`groups` collection)**
-*   `id`: string
-*   `name`: string
-*   `adminIds`: array of strings (UIDs)
-*   `memberIds`: array of strings (UIDs)
-*   `awards`: array of objects `{ id, name, cost, description }`
-
-**Goals (`goals` collection)**
-*   `id`: string
-*   `userId`: string
-*   `groupId`: string (Optional, if shared)
-*   `title`: string
-*   `description`: string
-*   `progress`: number (0-100)
-*   `completed`: boolean
-*   `points`: number (Points value of the goal)
-*   `deadline`: timestamp
-*   `reward`: string (Personal text reward)
-*   `isPrivate`: boolean
-*   `subGoals`: array of objects
-    *   `title`: string
-    *   `completed`: boolean
-    *   `steps`: array of objects `{ title, completed }`
-
-## Current MVP Status
-*   Basic Goal/Sub-goal/Step creation and editing is implemented.
-*   Points are awarded on Goal completion (currently fixed 100pts, needs refinement for granularity).
-*   Group creation and Joining via ID is implemented.
-*   Leaderboard displays members of the current group.
-*   Admin Panel allows creating Awards.
-*   Personal Reward text field is implemented.
-
-## Next Steps for Development
-1.  **Refine Progress Logic:** Ensure progress bars update dynamically as individual Steps are checked off.
-2.  **Point Granularity:** Award points for Steps and Sub-goals, not just the main Goal.
-3.  **Award Redemption:** Build the UI for non-admin members to view available Group Awards and "Redeem" them (deducting points).
-4.  **Sub-goal Progress:** Visualize progress bars specifically for sub-goals in the UI.
+## Implementation Guidelines
+*   Start by setting up the project with Vite and Firebase.
+*   Focus on the data model for recursive goals (Goal -> Sub -> Step).
+*   Ensure the offline capability is robust from the start (test by disconnecting network).
+*   Design the UI to look like a native app (mobile-first responsiveness).
