@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCreateGoal } from "@/hooks/useMutations";
 import { X } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
