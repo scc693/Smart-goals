@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useCreateGoal } from "@/hooks/useMutations";
 import { X } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
+import { Timestamp } from "firebase/firestore";
 
 interface CreateGoalModalProps {
     parentId: string | null;
@@ -9,10 +10,12 @@ interface CreateGoalModalProps {
     isOpen: boolean;
     onClose: () => void;
     allowedTypes?: ('goal' | 'sub-goal' | 'step')[];
+    defaultGroupId?: string | null;
 }
 
-export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, allowedTypes = ['goal'] }: CreateGoalModalProps) {
+export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, allowedTypes = ['goal'], defaultGroupId }: CreateGoalModalProps) {
     const [title, setTitle] = useState("");
+    const [deadline, setDeadline] = useState(""); // YYYY-MM-DD string from input
     // Default to the first allowed type
     const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(allowedTypes[0]);
 
@@ -22,9 +25,11 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
     useEffect(() => {
         if (isOpen) {
             setTitle("");
+            setDeadline("");
             setType(allowedTypes[0]);
+            setSelectedGroupId(defaultGroupId || "");
         }
-    }, [isOpen, allowedTypes]);
+    }, [isOpen, allowedTypes, defaultGroupId]);
 
     const { mutate: createGoal, isPending } = useCreateGoal();
     const { data: groups } = useGroups();
@@ -34,17 +39,15 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
         if (!title.trim()) return;
 
         createGoal({
-            title,
+            title: title.trim(),
             type,
             status: 'active',
             parentId,
             parentAncestors,
             groupId: selectedGroupId || null,
-            deadline: null,
+            deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
         }, {
             onSuccess: () => {
-                setTitle("");
-                setSelectedGroupId("");
                 onClose();
             }
         });
@@ -53,58 +56,75 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-xl font-bold text-gray-900">
-                        {parentId ? "Add Sub-goal" : "New Goal"}
+                        {parentId ? `Add to ${type === 'step' ? 'Goal' : 'Parent'}` : "Create New Goal"}
                     </h2>
-                    <button onClick={onClose} className="rounded-full p-1 hover:bg-gray-100">
-                        <X size={20} />
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                        <X size={24} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 p-3 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            placeholder="e.g. Learn French, Read 5 pages..."
-                            autoFocus
-                        />
-                    </div>
-
-                    {parentId && (
-                        <div className="flex gap-4">
+                    {/* Goal Type Selection - Only show if multiple types are allowed */}
+                    {allowedTypes.length > 1 && (
+                        <div className="flex gap-4 rounded-lg bg-gray-50 p-3">
                             {allowedTypes.includes('sub-goal') && (
-                                <label className="flex items-center gap-2 cursor-pointer">
+                                <label className="flex cursor-pointer items-center gap-2">
                                     <input
                                         type="radio"
                                         name="type"
                                         value="sub-goal"
                                         checked={type === 'sub-goal'}
-                                        onChange={() => setType('sub-goal')}
+                                        onChange={(e) => setType(e.target.value as any)}
+                                        className="text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span>Sub-goal</span>
+                                    <span className="text-sm font-medium text-gray-700">Sub-goal</span>
                                 </label>
                             )}
                             {allowedTypes.includes('step') && (
-                                <label className="flex items-center gap-2 cursor-pointer">
+                                <label className="flex cursor-pointer items-center gap-2">
                                     <input
                                         type="radio"
                                         name="type"
                                         value="step"
-                                        checked={type === 'step'}
-                                        onChange={() => setType('step')}
+                                        checked={type === 'step'} // Should be default if sub-goal not allowed
+                                        onChange={(e) => setType(e.target.value as any)}
+                                        className="text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span>Step</span>
+                                    <span className="text-sm font-medium text-gray-700">Step</span>
                                 </label>
                             )}
                         </div>
                     )}
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Title
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder={type === 'step' ? "e.g., Read 10 pages" : "e.g., Learn Spanish"}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Deadline (Optional)
+                        </label>
+                        <input
+                            type="date"
+                            value={deadline}
+                            onChange={(e) => setDeadline(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                    </div>
 
                     {!parentId && groups && groups.length > 0 && (
                         <div>

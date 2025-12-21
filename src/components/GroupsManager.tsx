@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { useGroups, useCreateGroup, useJoinGroup } from "@/hooks/useGroups";
-import { Users, Copy, Check } from "lucide-react";
+import { useGroups, useCreateGroup, useJoinGroup, useDeleteGroup } from "@/hooks/useGroups";
+import { Users, Copy, Check, Trash } from "lucide-react";
 
-export function GroupsManager() {
+export function GroupsManager({ onSelectGroup }: { onSelectGroup?: (groupId: string) => void }) {
     const { data: groups } = useGroups();
     const { mutate: createGroup, isPending: isCreating } = useCreateGroup();
     const { mutate: joinGroup, isPending: isJoining } = useJoinGroup();
+    const { mutate: deleteGroup } = useDeleteGroup();
 
     const [newGroupName, setNewGroupName] = useState("");
     const [joinGroupId, setJoinGroupId] = useState("");
@@ -45,7 +46,11 @@ export function GroupsManager() {
             {/* List */}
             <div className="space-y-2 mb-4">
                 {groups?.map(group => (
-                    <div key={group.id} className="flex items-center justify-between rounded bg-gray-50 p-2 text-sm">
+                    <div
+                        key={group.id}
+                        className="flex items-center justify-between rounded bg-gray-50 p-2 text-sm hover:bg-gray-100 cursor-pointer transition-colors"
+                        onClick={() => onSelectGroup?.(group.id)}
+                    >
                         <span className="font-medium text-gray-700">{group.name}</span>
                         <button
                             onClick={() => copyToClipboard(group.id)}
@@ -53,6 +58,13 @@ export function GroupsManager() {
                         >
                             {copiedId === group.id ? <Check size={14} /> : <Copy size={14} />}
                             {copiedId === group.id ? "Copied" : "ID"}
+                        </button>
+                        <button
+                            onClick={() => deleteGroup(group.id)}
+                            className="ml-2 text-gray-400 hover:text-red-500"
+                            title="Delete Group"
+                        >
+                            <Trash size={14} />
                         </button>
                     </div>
                 ))}

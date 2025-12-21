@@ -1,8 +1,23 @@
 import { useState } from "react";
 import type { GoalWithChildren } from "@/lib/tree-utils";
-import { useToggleStep, useDeleteGoal, useMarkGoalComplete } from "@/hooks/useMutations";
+import { useToggleStep, useDeleteGoal } from "@/hooks/useMutations";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Plus, Check, Trash2, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Check, Trash2, Clock } from "lucide-react";
+
+// Calculate urgency color based on deadline proximity
+function getUrgencyInfo(deadline: Date | null, status: string): { color: string; label: string } | null {
+    if (!deadline || status === 'completed') return null;
+
+    const now = new Date();
+    const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysUntil < 0) return { color: 'bg-red-500', label: 'Overdue' };
+    if (daysUntil === 0) return { color: 'bg-red-500', label: 'Due Today' };
+    if (daysUntil <= 1) return { color: 'bg-orange-500', label: 'Due Tomorrow' };
+    if (daysUntil <= 3) return { color: 'bg-yellow-500', label: `${daysUntil}d left` };
+    if (daysUntil <= 7) return { color: 'bg-blue-400', label: `${daysUntil}d left` };
+    return { color: 'bg-green-400', label: `${daysUntil}d left` };
+}
 
 interface GoalCardProps {
     goal: GoalWithChildren;
@@ -11,18 +26,18 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
-    // Debug log for hierarchy level
-    // console.log(`GoalCard: ${goal.title} (${goal.type}) - Level: ${level}`);
-
     const [expanded, setExpanded] = useState(true);
     const { mutate: toggleStep } = useToggleStep();
     const { mutate: deleteGoal } = useDeleteGoal();
-    const { mutate: markComplete } = useMarkGoalComplete();
 
     const isStep = goal.type === 'step';
     const progress = goal.totalSteps > 0 ? (goal.completedSteps / goal.totalSteps) * 100 : 0;
 
     const progressColor = progress === 100 ? 'text-green-500' : progress > 50 ? 'text-yellow-500' : 'text-blue-500';
+
+    // Calculate urgency based on deadline
+    const deadlineDate = goal.deadline?.toDate?.() || null;
+    const urgency = getUrgencyInfo(deadlineDate, goal.status);
 
     const handleToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -83,21 +98,16 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                     )}
                 </div>
 
+                {/* Urgency Badge */}
+                {urgency && (
+                    <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-xs", urgency.color)}>
+                        <Clock size={12} />
+                        <span>{urgency.label}</span>
+                    </div>
+                )}
+
                 {/* Actions Zone */}
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    {/* Mark Complete button - shows when all steps are done */}
-                    {!isStep && goal.totalSteps > 0 && progress === 100 && goal.status !== 'completed' && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                markComplete({ goalId: goal.id, isCompleted: true });
-                            }}
-                            className="rounded-full p-1 text-green-500 hover:bg-green-50 hover:text-green-600"
-                            title="Mark Complete"
-                        >
-                            <CheckCircle2 size={18} />
-                        </button>
-                    )}
                     {!isStep && (
                         <button
                             onClick={() => onAddSubGoal(goal.id, [...goal.ancestors.filter(id => id != null && id !== ''), goal.id], level)}

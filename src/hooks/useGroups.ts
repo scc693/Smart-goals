@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { collection, doc, setDoc, getDoc, updateDoc, arrayUnion, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthProvider";
 import type { Group } from "@/types";
@@ -53,6 +53,22 @@ export function useJoinGroup() {
             queryClient.invalidateQueries({ queryKey: ["groups"] });
             // Also invalidate goals because we might see new shared goals
             queryClient.invalidateQueries({ queryKey: ["goals"] });
+        },
+    });
+}
+
+export function useDeleteGroup() {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (groupId: string) => {
+            if (!user) throw new Error("Not authenticated");
+            await deleteDoc(doc(db, "groups", groupId));
+            return groupId;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["groups"] });
         },
     });
 }

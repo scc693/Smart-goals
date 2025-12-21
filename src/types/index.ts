@@ -22,6 +22,7 @@ export interface Goal {
     // Metadata
     deadline: Timestamp | null;
     createdAt: Timestamp;
+    order?: number; // For manual sorting
 }
 
 export interface Group {

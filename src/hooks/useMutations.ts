@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthProvider";
 import type { Goal } from "@/types";
@@ -207,6 +207,47 @@ export function useMarkGoalComplete() {
             }, { merge: true });
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["goals"] });
+        }
+    });
+}
+
+export function useReorderGoals() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ items }: { items: { id: string; order: number }[] }) => {
+            if (items.length === 0) return;
+
+            const batch = writeBatch(db);
+            items.forEach(item => {
+                const ref = doc(db, 'goals', item.id);
+                batch.update(ref, { order: item.order });
+            });
+
+            await batch.commit();
+        },
+        onMutate: async ({ items }) => {
+            await queryClient.cancelQueries({ queryKey: ["goals"] });
+            const previousGoals = queryClient.getQueryData<Goal[]>(["goals"]);
+
+            if (previousGoals) {
+                queryClient.setQueryData<Goal[]>(["goals"], (old) => {
+                    if (!old) return [];
+                    return old.map(g => {
+                        const update = items.find(i => i.id === g.id);
+                        return update ? { ...g, order: update.order } : g;
+                    });
+                });
+            }
+            return { previousGoals };
+        },
+        onError: (_err, _newTodo, context) => {
+            if (context?.previousGoals) {
+                queryClient.setQueryData(["goals"], context.previousGoals);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["goals"] });
         }
     });

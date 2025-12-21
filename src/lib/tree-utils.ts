@@ -28,5 +28,22 @@ export function buildGoalTree(goals: Goal[]): GoalWithChildren[] {
         }
     });
 
+    const sortGoals = (a: GoalWithChildren, b: GoalWithChildren) => {
+        // Primary sort: Custom order
+        if (typeof a.order === 'number' && typeof b.order === 'number') {
+            return a.order - b.order;
+        }
+        // Secondary sort: Created At (oldest first)
+        return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+    };
+
+    // Recursively sort
+    const sortRecursive = (nodes: GoalWithChildren[]) => {
+        nodes.sort(sortGoals);
+        nodes.forEach(node => sortRecursive(node.children));
+    };
+
+    sortRecursive(roots);
+
     return roots;
 }
