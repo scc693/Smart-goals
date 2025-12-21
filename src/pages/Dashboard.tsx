@@ -14,18 +14,12 @@ export default function Dashboard() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newGoalParentId, setNewGoalParentId] = useState<string | null>(null);
     const [newGoalAncestors, setNewGoalAncestors] = useState<string[]>([]);
+    const [allowedTypes, setAllowedTypes] = useState<('goal' | 'sub-goal' | 'step')[]>(['goal']);
 
-    // Filter goals based on completion status (for root goals)
-    // Note: If a sub-goal is active but root is completed, hiding root hides everything.
-    // Standard behavior for tree views usually.
     const visibleGoals = useMemo(() => {
         if (!goals) return [];
         return goals.filter(g => {
             if (showCompleted) return true;
-            // If hiding completed, hide if status is completed AND it's a root goal (parentId null).
-            // For children, we can decide: do we hide completed steps in an active goal?
-            // User asked: "marking them all as completed doesn't archive the goal".
-            // This implies hiding the *completed Root Goal*.
             if (!g.parentId && g.status === 'completed') return false;
             return true;
         });
@@ -33,9 +27,22 @@ export default function Dashboard() {
 
     const goalTree = useMemo(() => buildGoalTree(visibleGoals), [visibleGoals]);
 
-    const handleAddGoal = (parentId: string | null = null, ancestors: string[] = []) => {
+    const handleAddGoal = (parentId: string | null = null, ancestors: string[] = [], level: number = 0) => {
         setNewGoalParentId(parentId);
         setNewGoalAncestors(ancestors);
+
+        // Define allowed types based on depth/level
+        // Level 0 (Root) creation: 'goal'
+        // Level 1 creation (Child of Root): 'sub-goal' or 'step'
+        // Level 2 creation (Child of Sub-goal): 'step' only
+        if (parentId === null) {
+            setAllowedTypes(['goal']);
+        } else if (level === 0) { // Parent is Root Goal
+            setAllowedTypes(['sub-goal', 'step']);
+        } else { // Parent is Sub-goal (or deeper, though we shouldn't get deeper)
+            setAllowedTypes(['step']);
+        }
+
         setIsModalOpen(true);
     };
 
@@ -118,6 +125,7 @@ export default function Dashboard() {
                 onClose={() => setIsModalOpen(false)}
                 parentId={newGoalParentId}
                 parentAncestors={newGoalAncestors}
+                allowedTypes={allowedTypes}
             />
         </div>
     );

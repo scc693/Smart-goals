@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Plus, Check, Trash2 } from "lucide-react";
 
 interface GoalCardProps {
     goal: GoalWithChildren;
-    onAddSubGoal: (parentId: string, ancestors: string[]) => void;
+    onAddSubGoal: (parentId: string, ancestors: string[], level: number) => void;
     level?: number;
 }
 
@@ -20,7 +20,8 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
 
     const progressColor = progress === 100 ? 'text-green-500' : progress > 50 ? 'text-yellow-500' : 'text-blue-500';
 
-    const handleToggle = () => {
+    const handleToggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
         console.log("Toggling step:", goal.id, "Current status:", goal.status, "Ancestors:", goal.ancestors);
         toggleStep({
             stepId: goal.id,

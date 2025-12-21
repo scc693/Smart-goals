@@ -8,11 +8,15 @@ interface CreateGoalModalProps {
     parentAncestors: string[];
     isOpen: boolean;
     onClose: () => void;
+    allowedTypes?: ('goal' | 'sub-goal' | 'step')[];
 }
 
-export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose }: CreateGoalModalProps) {
+export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, allowedTypes = ['goal'] }: CreateGoalModalProps) {
     const [title, setTitle] = useState("");
-    const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(parentId ? 'sub-goal' : 'goal');
+    // Default to the first allowed type (that isn't 'goal' if parentId exists)
+    const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(
+        allowedTypes.includes('sub-goal') ? 'sub-goal' : 'step'
+    );
     const [selectedGroupId, setSelectedGroupId] = useState<string>("");
 
     const { mutate: createGoal, isPending } = useCreateGoal();
@@ -68,26 +72,30 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose }: 
 
                     {parentId && (
                         <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="type"
-                                    value="sub-goal"
-                                    checked={type === 'sub-goal'}
-                                    onChange={() => setType('sub-goal')}
-                                />
-                                <span>Sub-goal</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="type"
-                                    value="step"
-                                    checked={type === 'step'}
-                                    onChange={() => setType('step')}
-                                />
-                                <span>Step</span>
-                            </label>
+                            {allowedTypes.includes('sub-goal') && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="type"
+                                        value="sub-goal"
+                                        checked={type === 'sub-goal'}
+                                        onChange={() => setType('sub-goal')}
+                                    />
+                                    <span>Sub-goal</span>
+                                </label>
+                            )}
+                            {allowedTypes.includes('step') && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="type"
+                                        value="step"
+                                        checked={type === 'step'}
+                                        onChange={() => setType('step')}
+                                    />
+                                    <span>Step</span>
+                                </label>
+                            )}
                         </div>
                     )}
 
