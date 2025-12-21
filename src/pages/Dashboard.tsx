@@ -86,65 +86,64 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
-        </div>
-            </header >
+            </header>
 
-        {/* Main Content */ }
-        < main className = "mx-auto max-w-2xl p-4" >
-            <GroupsManager />
+            {/* Main Content */}
+            <main className="mx-auto max-w-2xl p-4">
+                <GroupsManager />
 
-    {
-        isLoading ? (
-            <div className="space-y-4">
-                {[1, 2, 3].map(i => (
-                    <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />
-                ))}
-            </div>
-        ) : goalTree.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-4 rounded-full bg-blue-50 p-6">
-                    <Layout className="h-12 w-12 text-blue-500" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-900">No goals yet</h3>
-                <p className="mb-6 max-w-xs text-gray-500">Start by creating a root goal to track your progress.</p>
-                <button
-                    onClick={() => handleAddGoal()}
-                    className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white shadow-lg transition-transform active:scale-95"
-                >
-                    Create First Goal
-                </button>
-            </div>
-        ) : (
-            <div className="space-y-4">
-                {goalTree.map(goal => (
-                    <GoalCard
-                        key={goal.id}
-                        goal={goal}
-                        onAddSubGoal={handleAddGoal}
-                    />
-                ))}
-            </div>
-        )
-    }
+                {
+                    isLoading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />
+                            ))}
+                        </div>
+                    ) : goalTree.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="mb-4 rounded-full bg-blue-50 p-6">
+                                <Layout className="h-12 w-12 text-blue-500" />
+                            </div>
+                            <h3 className="mb-2 text-lg font-semibold text-gray-900">No goals yet</h3>
+                            <p className="mb-6 max-w-xs text-gray-500">Start by creating a root goal to track your progress.</p>
+                            <button
+                                onClick={() => handleAddGoal()}
+                                className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white shadow-lg transition-transform active:scale-95"
+                            >
+                                Create First Goal
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {goalTree.map(goal => (
+                                <GoalCard
+                                    key={goal.id}
+                                    goal={goal}
+                                    onAddSubGoal={handleAddGoal}
+                                />
+                            ))}
+                        </div>
+                    )
+                }
             </main >
 
-        {/* FAB for Mobile */ }
-        < button
-    onClick = {() => handleAddGoal()
-}
-className = "fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition-transform hover:scale-105 active:scale-95 md:hidden"
-    >
-    <Plus size={28} />
+            {/* FAB for Mobile */}
+            <button
+                onClick={() => handleAddGoal()
+                }
+                className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition-transform hover:scale-105 active:scale-95 md:hidden"
+            >
+                <Plus size={28} />
             </button >
 
-    {/* Create Modal */ }
-    < CreateGoalModal
-isOpen = { isModalOpen }
-onClose = {() => setIsModalOpen(false)}
-parentId = { newGoalParentId }
-parentAncestors = { newGoalAncestors }
-allowedTypes = { allowedTypes }
-    />
+            {/* Create Modal */}
+            <CreateGoalModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                parentId={newGoalParentId}
+                parentAncestors={newGoalAncestors}
+                allowedTypes={allowedTypes}
+            />
         </div >
     );
 }
