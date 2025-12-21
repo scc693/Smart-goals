@@ -57,7 +57,7 @@ export function useDeleteGoal() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ goalId, ancestors }: { goalId: string; ancestors: string[] }) => {
+        mutationFn: async ({ goalId }: { goalId: string; ancestors: string[] }) => {
             const goalRef = doc(db, "goals", goalId);
 
             // Query for all children (where ancestors contains goalId)
@@ -166,4 +166,4 @@ export function useToggleStep() {
         }
     });
 }
-```
+

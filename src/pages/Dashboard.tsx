@@ -116,8 +116,8 @@ export default function Dashboard() {
             <CreateGoalModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                parentId={modalParentId}
-                parentAncestors={modalAncestors}
+                parentId={newGoalParentId}
+                parentAncestors={newGoalAncestors}
             />
         </div>
     );
