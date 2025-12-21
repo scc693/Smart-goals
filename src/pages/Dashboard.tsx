@@ -7,6 +7,7 @@ import { CreateGoalModal } from "@/components/CreateGoalModal";
 import { GroupsManager } from "@/components/GroupsManager";
 import { Plus, Layout, Users, ChevronLeft } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
+import { UserStatsCard } from "@/components/UserStatsCard";
 import {
     DndContext,
     closestCenter,
@@ -158,6 +159,11 @@ export default function Dashboard() {
 
             {/* Main Content */}
             <main className="mx-auto max-w-2xl p-4">
+                {/* User Stats */}
+                <div className="mb-6">
+                    <UserStatsCard />
+                </div>
+
                 {/* Tabs */}
                 {!selectedGroupId && (
                     <div className="mb-6 flex rounded-lg bg-gray-100 p-1">

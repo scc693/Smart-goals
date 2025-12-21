@@ -91,7 +91,7 @@ export function useCreateGoal() {
             if (goalData.parentId) {
                 let createdGoal: Goal | null = null;
                 await runTransaction(db, async (transaction) => {
-                    const parentRef = doc(db, "goals", goalData.parentId);
+                    const parentRef = doc(db, "goals", goalData.parentId!);
                     const parentSnap = await transaction.get(parentRef);
                     if (!parentSnap.exists()) {
                         throw new Error("Parent goal not found");

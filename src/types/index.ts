@@ -32,3 +32,12 @@ export interface Group {
     createdBy: string;
     createdAt: Timestamp | FieldValue;
 }
+
+export interface UserStats {
+    id: string;              // Same as user.uid
+    xp: number;              // Total XP earned
+    level: number;           // Calculated from XP
+    streak: number;          // Current streak (days)
+    lastActiveDate: string;  // YYYY-MM-DD format
+    createdAt: Timestamp | FieldValue;
+}
