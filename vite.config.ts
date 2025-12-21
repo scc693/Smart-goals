@@ -8,11 +8,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-      workbox: {
-        mode: 'development',
-      },
       manifest: {
         name: 'Gamified Goal Tracker',
         short_name: 'GoalTracker',
@@ -33,6 +33,20 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) return 'firebase'
+            if (id.includes('@tanstack')) return 'tanstack'
+            if (id.includes('@dnd-kit')) return 'dnd-kit'
+            return 'vendor'
+          }
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
