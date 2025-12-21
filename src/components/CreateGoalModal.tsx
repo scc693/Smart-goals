@@ -13,11 +13,18 @@ interface CreateGoalModalProps {
 
 export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, allowedTypes = ['goal'] }: CreateGoalModalProps) {
     const [title, setTitle] = useState("");
-    // Default to the first allowed type (that isn't 'goal' if parentId exists)
-    const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(
-        allowedTypes.includes('sub-goal') ? 'sub-goal' : 'step'
-    );
+    // Default to the first allowed type
+    const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(allowedTypes[0]);
+
     const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+
+    // Reset state when modal opens or allowedTypes changes
+    useEffect(() => {
+        if (isOpen) {
+            setTitle("");
+            setType(allowedTypes[0]);
+        }
+    }, [isOpen, allowedTypes]);
 
     const { mutate: createGoal, isPending } = useCreateGoal();
     const { data: groups } = useGroups();
