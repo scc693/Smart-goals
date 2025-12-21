@@ -1,3 +1,4 @@
+```typescript
 import { useState } from "react";
 import type { GoalWithChildren } from "@/lib/tree-utils";
 import { useToggleStep, useDeleteGoal } from "@/hooks/useMutations";
@@ -11,6 +12,9 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
+    // Debug log for hierarchy level
+    // console.log(`GoalCard: ${ goal.title } (${ goal.type }) - Level: ${ level } `);
+
     const [expanded, setExpanded] = useState(true);
     const { mutate: toggleStep } = useToggleStep();
     const { mutate: deleteGoal } = useDeleteGoal();
@@ -83,7 +87,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {!isStep && (
                         <button
-                            onClick={() => onAddSubGoal(goal.id, [...goal.ancestors, goal.id])}
+                            onClick={() => onAddSubGoal(goal.id, [...goal.ancestors, goal.id], level)}
                             className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
                             title="Add Sub-goal"
                         >
@@ -113,7 +117,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                             />
                             <path
                                 className={progressColor.replace('text-', 'stroke-')}
-                                strokeDasharray={`${progress}, 100`}
+                                strokeDasharray={`${ progress }, 100`}
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
                                 stroke="currentColor"
@@ -140,3 +144,4 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
         </div>
     );
 }
+```

@@ -28,6 +28,7 @@ export default function Dashboard() {
     const goalTree = useMemo(() => buildGoalTree(visibleGoals), [visibleGoals]);
 
     const handleAddGoal = (parentId: string | null = null, ancestors: string[] = [], level: number = 0) => {
+        console.log(`Open Modal - Parent: ${parentId}, Level: ${level}`);
         setNewGoalParentId(parentId);
         setNewGoalAncestors(ancestors);
 
