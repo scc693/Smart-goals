@@ -34,13 +34,21 @@ export default defineConfig({
     })
   ],
   build: {
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
+        entryFileNames: 'assets/app-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('firebase')) return 'firebase'
-            if (id.includes('@tanstack')) return 'tanstack'
-            if (id.includes('@dnd-kit')) return 'dnd-kit'
+            // Order matters: match more specific packages before broader fallbacks.
+            if (id.includes('firebase/auth') || id.includes('@firebase/auth')) return 'vendor-firebase-auth'
+            if (id.includes('firebase/firestore') || id.includes('@firebase/firestore')) return 'vendor-firebase-firestore'
+            if (id.includes('firebase/app') || id.includes('@firebase/app')) return 'vendor-firebase-app'
+            if (id.includes('firebase')) return 'vendor-firebase'
+            if (id.includes('@tanstack')) return 'vendor-tanstack'
+            if (id.includes('react-dom') || id.includes('react')) return 'vendor-react'
             return 'vendor'
           }
         }
