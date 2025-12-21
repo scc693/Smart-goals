@@ -36,19 +36,21 @@ export function useCreateGoal() {
                 await runTransaction(db, async (transaction) => {
                     transaction.set(doc(db, "goals", goalId), goal);
 
-                    // Increment totalSteps on ALL ancestors (not just direct parent)
-                    // This matches how completedSteps propagates when a step is completed
-                    const allAncestorIds = [...ancestors];
-                    if (goal.parentId && !allAncestorIds.includes(goal.parentId)) {
-                        allAncestorIds.push(goal.parentId);
-                    }
+                    // Only STEPS count toward totalSteps (not sub-goals)
+                    // This ensures progress % is based on completed steps / total steps
+                    if (goal.type === 'step') {
+                        const allAncestorIds = [...ancestors];
+                        if (goal.parentId && !allAncestorIds.includes(goal.parentId)) {
+                            allAncestorIds.push(goal.parentId);
+                        }
 
-                    allAncestorIds.forEach(ancestorId => {
-                        const ancestorRef = doc(db, "goals", ancestorId);
-                        transaction.update(ancestorRef, {
-                            totalSteps: increment(1)
+                        allAncestorIds.forEach(ancestorId => {
+                            const ancestorRef = doc(db, "goals", ancestorId);
+                            transaction.update(ancestorRef, {
+                                totalSteps: increment(1)
+                            });
                         });
-                    });
+                    }
                 });
             } else {
                 await setDoc(doc(db, "goals", goalId), goal);
@@ -85,17 +87,22 @@ export function useDeleteGoal() {
                     transaction.delete(doc.ref);
                 });
 
-                // Decrement totalSteps and completedSteps on ALL ancestors (not just direct parent)
-                // Filter out invalid ancestor IDs
+                // Only STEPS affect totalSteps (matching creation logic)
+                // Decrement counters on ALL ancestors
                 const validAncestors = (goalData.ancestors || []).filter((id): id is string => id != null && id !== '');
 
-                validAncestors.forEach(ancestorId => {
-                    const ancestorRef = doc(db, "goals", ancestorId);
-                    transaction.update(ancestorRef, {
-                        totalSteps: increment(-1),
-                        completedSteps: increment(goalData.status === 'completed' ? -1 : 0)
+                if (goalData.type === 'step') {
+                    validAncestors.forEach(ancestorId => {
+                        const ancestorRef = doc(db, "goals", ancestorId);
+                        transaction.update(ancestorRef, {
+                            totalSteps: increment(-1),
+                            completedSteps: increment(goalData.status === 'completed' ? -1 : 0)
+                        });
                     });
-                });
+                } else if (goalData.status === 'completed') {
+                    // If a completed goal/sub-goal is deleted, we don't decrement totalSteps
+                    // but we might need to handle children's completedSteps - they're deleted so counters auto-adjust
+                }
             });
         },
         onSuccess: () => {
@@ -189,3 +196,18 @@ export function useToggleStep() {
     });
 }
 
+export function useMarkGoalComplete() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ goalId, isCompleted }: { goalId: string; isCompleted: boolean }) => {
+            const goalRef = doc(db, "goals", goalId);
+            await setDoc(goalRef, {
+                status: isCompleted ? 'completed' : 'active'
+            }, { merge: true });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["goals"] });
+        }
+    });
+}

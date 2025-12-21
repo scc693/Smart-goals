@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { GoalWithChildren } from "@/lib/tree-utils";
-import { useToggleStep, useDeleteGoal } from "@/hooks/useMutations";
+import { useToggleStep, useDeleteGoal, useMarkGoalComplete } from "@/hooks/useMutations";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Plus, Check, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Check, Trash2, CheckCircle2 } from "lucide-react";
 
 interface GoalCardProps {
     goal: GoalWithChildren;
@@ -17,6 +17,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
     const [expanded, setExpanded] = useState(true);
     const { mutate: toggleStep } = useToggleStep();
     const { mutate: deleteGoal } = useDeleteGoal();
+    const { mutate: markComplete } = useMarkGoalComplete();
 
     const isStep = goal.type === 'step';
     const progress = goal.totalSteps > 0 ? (goal.completedSteps / goal.totalSteps) * 100 : 0;
@@ -84,6 +85,19 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
 
                 {/* Actions Zone */}
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    {/* Mark Complete button - shows when all steps are done */}
+                    {!isStep && goal.totalSteps > 0 && progress === 100 && goal.status !== 'completed' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                markComplete({ goalId: goal.id, isCompleted: true });
+                            }}
+                            className="rounded-full p-1 text-green-500 hover:bg-green-50 hover:text-green-600"
+                            title="Mark Complete"
+                        >
+                            <CheckCircle2 size={18} />
+                        </button>
+                    )}
                     {!isStep && (
                         <button
                             onClick={() => onAddSubGoal(goal.id, [...goal.ancestors.filter(id => id != null && id !== ''), goal.id], level)}
