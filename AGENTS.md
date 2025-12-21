@@ -21,7 +21,7 @@
 - Linting is defined in `eslint.config.js` with React Hooks and React Refresh rules.
 
 ## Testing Guidelines
-- No automated test framework is currently configured.
+- Tests use Vitest + React Testing Library (jsdom). Run `npm test`.
 - Use `npm run lint` and `npm run build` as the baseline CI checks.
 - If adding tests, prefer colocating them with source files (e.g., `Component.test.tsx`) and document the new test runner in this file.
 
