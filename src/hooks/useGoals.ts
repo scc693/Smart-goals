@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthProvider";
+import { useAuth } from "@/context/auth-context";
 import type { Goal } from "@/types";
 
 export function useGoals() {
@@ -54,7 +54,18 @@ export function useGoals() {
                 }
             });
 
-            return goals.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            const getCreatedAtMillis = (goal: Goal) => {
+                const createdAt = goal.createdAt;
+                if (createdAt instanceof Timestamp) {
+                    return createdAt.toMillis();
+                }
+                if (createdAt && typeof (createdAt as Timestamp).seconds === "number") {
+                    return (createdAt as Timestamp).seconds * 1000;
+                }
+                return 0;
+            };
+
+            return goals.sort((a, b) => getCreatedAtMillis(b) - getCreatedAtMillis(a));
         },
         enabled: !!user,
     });

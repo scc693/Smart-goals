@@ -10,6 +10,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      workbox: {
+        mode: 'development',
+      },
       manifest: {
         name: 'Gamified Goal Tracker',
         short_name: 'GoalTracker',

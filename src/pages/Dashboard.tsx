@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useAuth } from "@/context/AuthProvider";
+import { useAuth } from "@/context/auth-context";
 import { useGoals } from "@/hooks/useGoals";
 import { buildGoalTree } from "@/lib/tree-utils";
 import { SortableGoalCard } from "@/components/SortableGoalCard";
@@ -269,6 +269,7 @@ export default function Dashboard() {
 
             {/* Create Modal */}
             <CreateGoalModal
+                key={`${isModalOpen ? "open" : "closed"}-${newGoalParentId ?? "root"}-${allowedTypes.join(",")}-${activeTab}-${selectedGroupId ?? ""}`}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 parentId={newGoalParentId}

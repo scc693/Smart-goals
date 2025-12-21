@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase/firestore";
 import type { Goal } from "@/types";
 
 export interface GoalWithChildren extends Goal {
@@ -34,7 +35,16 @@ export function buildGoalTree(goals: Goal[]): GoalWithChildren[] {
             return a.order - b.order;
         }
         // Secondary sort: Created At (oldest first)
-        return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+        const getCreatedAtSeconds = (createdAt: Goal["createdAt"]) => {
+            if (createdAt instanceof Timestamp) {
+                return createdAt.seconds;
+            }
+            if (createdAt && typeof (createdAt as Timestamp).seconds === "number") {
+                return (createdAt as Timestamp).seconds;
+            }
+            return 0;
+        };
+        return getCreatedAtSeconds(a.createdAt) - getCreatedAtSeconds(b.createdAt);
     };
 
     // Recursively sort

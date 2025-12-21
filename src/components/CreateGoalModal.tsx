@@ -1,35 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useCreateGoal } from "@/hooks/useMutations";
 import { X } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
 import { Timestamp } from "firebase/firestore";
+
+type GoalType = 'goal' | 'sub-goal' | 'step';
 
 interface CreateGoalModalProps {
     parentId: string | null;
     parentAncestors: string[];
     isOpen: boolean;
     onClose: () => void;
-    allowedTypes?: ('goal' | 'sub-goal' | 'step')[];
+    allowedTypes?: GoalType[];
     defaultGroupId?: string | null;
 }
 
 export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, allowedTypes = ['goal'], defaultGroupId }: CreateGoalModalProps) {
+    const initialType = allowedTypes[0] ?? 'goal';
     const [title, setTitle] = useState("");
     const [deadline, setDeadline] = useState(""); // YYYY-MM-DD string from input
     // Default to the first allowed type
-    const [type, setType] = useState<'goal' | 'sub-goal' | 'step'>(allowedTypes[0]);
-
-    const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-
-    // Reset state when modal opens or allowedTypes changes
-    useEffect(() => {
-        if (isOpen) {
-            setTitle("");
-            setDeadline("");
-            setType(allowedTypes[0]);
-            setSelectedGroupId(defaultGroupId || "");
-        }
-    }, [isOpen, allowedTypes, defaultGroupId]);
+    const [type, setType] = useState<GoalType>(initialType);
+    const [selectedGroupId, setSelectedGroupId] = useState<string>(defaultGroupId ?? "");
 
     const { mutate: createGoal, isPending } = useCreateGoal();
     const { data: groups } = useGroups();
@@ -78,7 +70,7 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
                                         name="type"
                                         value="sub-goal"
                                         checked={type === 'sub-goal'}
-                                        onChange={(e) => setType(e.target.value as any)}
+                                        onChange={(e) => setType(e.target.value as GoalType)}
                                         className="text-blue-600 focus:ring-blue-500"
                                     />
                                     <span className="text-sm font-medium text-gray-700">Sub-goal</span>
@@ -91,7 +83,7 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
                                         name="type"
                                         value="step"
                                         checked={type === 'step'} // Should be default if sub-goal not allowed
-                                        onChange={(e) => setType(e.target.value as any)}
+                                        onChange={(e) => setType(e.target.value as GoalType)}
                                         className="text-blue-600 focus:ring-blue-500"
                                     />
                                     <span className="text-sm font-medium text-gray-700">Step</span>

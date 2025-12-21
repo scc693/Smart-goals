@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthProvider";
+import { useAuth } from "@/context/auth-context";
 import type { Group } from "@/types";
 
 export function useCreateGroup() {
@@ -17,7 +17,7 @@ export function useCreateGroup() {
                 name,
                 members: [user.uid],
                 createdBy: user.uid,
-                createdAt: serverTimestamp() as any,
+                createdAt: serverTimestamp(),
             };
             await setDoc(doc(db, "groups", groupId), group);
             return group;

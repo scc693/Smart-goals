@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { FieldValue, Timestamp } from "firebase/firestore";
 
 export interface Goal {
     id: string;
@@ -21,7 +21,7 @@ export interface Goal {
 
     // Metadata
     deadline: Timestamp | null;
-    createdAt: Timestamp;
+    createdAt: Timestamp | FieldValue;
     order?: number; // For manual sorting
 }
 
@@ -30,5 +30,5 @@ export interface Group {
     name: string;
     members: string[]; // Array of userUIDs
     createdBy: string;
-    createdAt: Timestamp;
+    createdAt: Timestamp | FieldValue;
 }

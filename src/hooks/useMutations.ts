@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthProvider";
+import { useAuth } from "@/context/auth-context";
 import type { Goal } from "@/types";
 
 export function useCreateGoal() {
@@ -27,7 +27,7 @@ export function useCreateGoal() {
                 sharedWith: [],
                 completedSteps: 0,
                 totalSteps: 0,
-                createdAt: serverTimestamp() as any,
+                createdAt: serverTimestamp(),
                 ancestors, // Valid here
                 ...goalData, // goalData (without ancestors) spread here
             };

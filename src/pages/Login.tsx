@@ -1,4 +1,4 @@
-import { useAuth } from "@/context/AuthProvider";
+import { useAuth } from "@/context/auth-context";
 import { Navigate } from "react-router-dom";
 
 export default function Login() {
