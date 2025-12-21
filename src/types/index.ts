@@ -5,7 +5,11 @@ export interface Goal {
     userId: string;
     title: string;
     type: 'goal' | 'sub-goal' | 'step';
-    status: 'active' | 'completed';
+    status: 'active' | 'completed' | 'pending_verification';
+
+    // Verification
+    requiresVerification?: boolean;
+    verificationId?: string; // Reference to pending verification
 
     // Recursion Logic
     parentId: string | null;

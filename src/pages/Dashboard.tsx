@@ -6,6 +6,7 @@ import { SortableGoalCard } from "@/components/SortableGoalCard";
 import { CreateGoalModal } from "@/components/CreateGoalModal";
 import { GroupsManager } from "@/components/GroupsManager";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { NotificationManager } from "@/components/NotificationManager";
 import { Plus, Layout, Users, ChevronLeft } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
 import { UserStatsCard } from "@/components/UserStatsCard";
@@ -288,6 +289,9 @@ export default function Dashboard() {
                 allowedTypes={allowedTypes}
                 defaultGroupId={activeTab === 'groups' ? selectedGroupId : null}
             />
+
+            {/* Notification Manager */}
+            <NotificationManager />
         </div >
     );
 }

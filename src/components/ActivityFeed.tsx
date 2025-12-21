@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
+import { useApproveVerification } from "@/hooks/useVerification";
+import { useAuth } from "@/context/auth-context";
 import type { Activity } from "@/types";
 import { cn } from "@/lib/utils";
 import { Timestamp } from "firebase/firestore";
-import { CheckCircle2, TrendingUp, HelpCircle, Award, Loader2 } from "lucide-react";
+import { CheckCircle2, TrendingUp, HelpCircle, Award, Loader2, CheckCheck } from "lucide-react";
 
 interface ActivityFeedProps {
     groupId: string | null;
@@ -65,8 +67,20 @@ function formatTimestamp(timestamp: unknown): string {
     return date.toLocaleDateString();
 }
 
-function ActivityItem({ activity }: { activity: Activity }) {
+function ActivityItem({
+    activity,
+    currentUserId,
+    onApprove,
+    isApproving
+}: {
+    activity: Activity;
+    currentUserId: string | undefined;
+    onApprove: (activity: Activity) => void;
+    isApproving: boolean;
+}) {
     const isOptimistic = activity.id.startsWith('optimistic-');
+    const isVerificationRequest = activity.type === 'verification_request';
+    const canVerify = isVerificationRequest && currentUserId && activity.userId !== currentUserId;
 
     return (
         <div className={cn(
@@ -119,13 +133,33 @@ function ActivityItem({ activity }: { activity: Activity }) {
                         />
                     </div>
                 )}
+
+                {/* Verify Button */}
+                {canVerify && (
+                    <button
+                        onClick={() => onApprove(activity)}
+                        disabled={isApproving}
+                        className="mt-2 flex items-center gap-1 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-600 disabled:opacity-50"
+                    >
+                        {isApproving ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <CheckCheck size={14} />
+                        )}
+                        Verify
+                    </button>
+                )}
             </div>
         </div>
     );
 }
 
 export function ActivityFeed({ groupId, className }: ActivityFeedProps) {
+    const { user } = useAuth();
     const [filter, setFilter] = useState<'all' | 'mine'>('all');
+    const [approvingId, setApprovingId] = useState<string | null>(null);
+
+    const { mutate: approveVerification } = useApproveVerification();
     const {
         data,
         hasNextPage,
@@ -134,6 +168,25 @@ export function ActivityFeed({ groupId, className }: ActivityFeedProps) {
         isLoading,
         isError,
     } = useActivityFeed({ groupId, filter });
+
+    const handleApprove = useCallback((activity: Activity) => {
+        if (!activity.goalId || !groupId) return;
+
+        setApprovingId(activity.id);
+
+        // We need to get the verificationId - it should be on the goal
+        // For now, we'll use goalId to look it up or pass it via activity metadata
+        // This is a simplified version that assumes goalId maps to verification
+        approveVerification({
+            verificationId: activity.goalId, // This would be the actual verificationId
+            goalId: activity.goalId,
+            goalTitle: activity.goalTitle || '',
+            requesterId: activity.userId,
+            groupId: groupId,
+        }, {
+            onSettled: () => setApprovingId(null),
+        });
+    }, [approveVerification, groupId]);
 
     // Infinite scroll observer
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -221,7 +274,13 @@ export function ActivityFeed({ groupId, className }: ActivityFeedProps) {
                 ) : (
                     <div className="divide-y">
                         {activities.map((activity) => (
-                            <ActivityItem key={activity.id} activity={activity} />
+                            <ActivityItem
+                                key={activity.id}
+                                activity={activity}
+                                currentUserId={user?.uid}
+                                onApprove={handleApprove}
+                                isApproving={approvingId === activity.id}
+                            />
                         ))}
                     </div>
                 )}

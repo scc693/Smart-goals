@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { GoalWithChildren } from "@/lib/tree-utils";
 import { useToggleStep, useDeleteGoal, useMarkGoalComplete } from "@/hooks/useMutations";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Plus, Check, Trash2, Clock, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Check, Trash2, Clock, CheckCircle2, Loader2 } from "lucide-react";
+import { VerificationModal } from "./VerificationModal";
 
 // Calculate urgency color based on deadline proximity
 function getUrgencyInfo(deadline: Date | null, status: string): { color: string; label: string } | null {
@@ -27,11 +28,13 @@ interface GoalCardProps {
 
 export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
     const [expanded, setExpanded] = useState(true);
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
     const { mutate: toggleStep } = useToggleStep();
     const { mutate: deleteGoal } = useDeleteGoal();
     const { mutate: markComplete } = useMarkGoalComplete();
 
     const isStep = goal.type === 'step';
+    const isPending = goal.status === 'pending_verification';
     const progress = goal.totalSteps > 0 ? (goal.completedSteps / goal.totalSteps) * 100 : 0;
 
     const progressColor = progress === 100 ? 'text-green-500' : progress > 50 ? 'text-yellow-500' : 'text-blue-500';
@@ -42,6 +45,14 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
 
     const handleToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
+
+        // If requires verification and not yet complete, open modal
+        if (goal.requiresVerification && goal.status === 'active' && goal.groupId) {
+            setShowVerificationModal(true);
+            return;
+        }
+
+        // Otherwise, regular toggle
         console.log("Toggling step:", goal.id, "Current status:", goal.status, "Ancestors:", goal.ancestors);
         toggleStep({
             stepId: goal.id,
@@ -77,12 +88,18 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                 {isStep && (
                     <button
                         onClick={handleToggle}
+                        disabled={isPending}
                         className={cn(
                             "flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors",
-                            goal.status === 'completed' ? "border-green-500 bg-green-500" : "border-gray-300 hover:border-blue-400"
+                            goal.status === 'completed'
+                                ? "border-green-500 bg-green-500"
+                                : isPending
+                                    ? "border-yellow-500 bg-yellow-500 cursor-wait"
+                                    : "border-gray-300 hover:border-blue-400"
                         )}
                     >
                         {goal.status === 'completed' && <Check size={14} className="text-white" />}
+                        {isPending && <Loader2 size={14} className="text-white animate-spin" />}
                     </button>
                 )}
 
@@ -104,6 +121,14 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                     <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-xs", urgency.color)}>
                         <Clock size={12} />
                         <span>{urgency.label}</span>
+                    </div>
+                )}
+
+                {/* Pending Verification Badge */}
+                {isPending && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs">
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Awaiting Verification</span>
                     </div>
                 )}
 
@@ -177,6 +202,16 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                         />
                     ))}
                 </div>
+            )}
+            {/* Verification Modal */}
+            {showVerificationModal && goal.groupId && (
+                <VerificationModal
+                    isOpen={showVerificationModal}
+                    onClose={() => setShowVerificationModal(false)}
+                    goalId={goal.id}
+                    goalTitle={goal.title}
+                    groupId={goal.groupId}
+                />
             )}
         </div>
     );

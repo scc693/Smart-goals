@@ -22,6 +22,7 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
     // Default to the first allowed type
     const [type, setType] = useState<GoalType>(initialType);
     const [selectedGroupId, setSelectedGroupId] = useState<string>(defaultGroupId ?? "");
+    const [requiresVerification, setRequiresVerification] = useState(false);
 
     const { mutate: createGoal, isPending } = useCreateGoal();
     const { data: groups } = useGroups();
@@ -46,6 +47,7 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
             parentAncestors,
             groupId: selectedGroupId || null,
             deadline: parsedDeadline ? Timestamp.fromDate(parsedDeadline) : null,
+            requiresVerification: type === 'step' && requiresVerification,
         }, {
             onSuccess: () => {
                 onClose();
@@ -125,6 +127,22 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
                             className="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                     </div>
+
+                    {/* Requires Verification Toggle - Only for steps in groups */}
+                    {type === 'step' && (selectedGroupId || defaultGroupId) && (
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+                            <input
+                                type="checkbox"
+                                checked={requiresVerification}
+                                onChange={(e) => setRequiresVerification(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div>
+                                <span className="text-sm font-medium text-gray-700">Requires Verification</span>
+                                <p className="text-xs text-gray-500">Group members must approve before XP is awarded</p>
+                            </div>
+                        </label>
+                    )}
 
                     {!parentId && groups && groups.length > 0 && (
                         <div>
