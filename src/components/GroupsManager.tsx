@@ -14,8 +14,9 @@ export function GroupsManager({ onSelectGroup }: { onSelectGroup?: (groupId: str
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newGroupName.trim()) {
-            createGroup(newGroupName, {
+        const trimmedName = newGroupName.trim();
+        if (trimmedName) {
+            createGroup(trimmedName, {
                 onSuccess: () => setNewGroupName("")
             });
         }
@@ -23,17 +24,22 @@ export function GroupsManager({ onSelectGroup }: { onSelectGroup?: (groupId: str
 
     const handleJoin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (joinGroupId.trim()) {
-            joinGroup(joinGroupId, {
+        const trimmedId = joinGroupId.trim();
+        if (trimmedId) {
+            joinGroup(trimmedId, {
                 onSuccess: () => setJoinGroupId("")
             });
         }
     };
 
-    const copyToClipboard = (id: string) => {
-        navigator.clipboard.writeText(id);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
+    const copyToClipboard = async (id: string) => {
+        try {
+            await navigator.clipboard.writeText(id);
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (error) {
+            console.error("Failed to copy group ID:", error);
+        }
     };
 
     return (
@@ -53,7 +59,10 @@ export function GroupsManager({ onSelectGroup }: { onSelectGroup?: (groupId: str
                     >
                         <span className="font-medium text-gray-700">{group.name}</span>
                         <button
-                            onClick={() => copyToClipboard(group.id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(group.id);
+                            }}
                             className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
                         >
                             {copiedId === group.id ? <Check size={14} /> : <Copy size={14} />}

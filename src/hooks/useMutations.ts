@@ -1,8 +1,69 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs, getDoc, type Transaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
-import type { Goal } from "@/types";
+import type { Goal, Group } from "@/types";
+
+const sanitizeIds = (ids: Array<string | null | undefined>) => {
+    return Array.from(new Set(ids.filter((id): id is string => typeof id === "string" && id.trim() !== "")));
+};
+
+const hasDirectGoalAccess = (goal: Goal, uid: string) => {
+    if (goal.userId === uid) return true;
+    const sharedWith = Array.isArray(goal.sharedWith) ? goal.sharedWith : [];
+    return sharedWith.includes(uid);
+};
+
+const isGroupMember = async (groupId: string, uid: string) => {
+    const groupSnap = await getDoc(doc(db, "groups", groupId));
+    if (!groupSnap.exists()) return false;
+    const groupData = groupSnap.data() as Group;
+    return Array.isArray(groupData.members) && groupData.members.includes(uid);
+};
+
+const isGroupMemberTx = async (
+    transaction: Transaction,
+    groupId: string,
+    uid: string,
+    cache?: Map<string, boolean>
+) => {
+    if (cache?.has(groupId)) {
+        return cache.get(groupId) ?? false;
+    }
+
+    const groupSnap = await transaction.get(doc(db, "groups", groupId));
+    const allowed = groupSnap.exists()
+        && Array.isArray((groupSnap.data() as Group).members)
+        && (groupSnap.data() as Group).members.includes(uid);
+
+    cache?.set(groupId, allowed);
+    return allowed;
+};
+
+const canAccessGoalTx = async (
+    transaction: Transaction,
+    goal: Goal,
+    uid: string,
+    cache?: Map<string, boolean>
+) => {
+    if (hasDirectGoalAccess(goal, uid)) return true;
+    if (goal.groupId) {
+        return isGroupMemberTx(transaction, goal.groupId, uid, cache);
+    }
+    return false;
+};
+
+const assertCanAccessGoalTx = async (
+    transaction: Transaction,
+    goal: Goal,
+    uid: string,
+    cache?: Map<string, boolean>
+) => {
+    const allowed = await canAccessGoalTx(transaction, goal, uid, cache);
+    if (!allowed) {
+        throw new Error("Not authorized to modify this goal");
+    }
+};
 
 export function useCreateGoal() {
     const { user } = useAuth();
@@ -13,50 +74,81 @@ export function useCreateGoal() {
             if (!user) throw new Error("User not authenticated");
 
             const goalId = doc(collection(db, "goals")).id;
-            // Sanitize ancestors: remove nulls, empty strings, and duplicates
-            const rawAncestors = newGoal.parentAncestors || [];
-            const ancestors = [...new Set(rawAncestors.filter((id): id is string => id != null && id !== ''))];
 
             // Destructure to separate helpers from data
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { parentAncestors, ...goalData } = newGoal;
 
-            const goal: Goal = {
+            const baseGoal = {
                 id: goalId,
                 userId: user.uid,
                 sharedWith: [],
                 completedSteps: 0,
                 totalSteps: 0,
                 createdAt: serverTimestamp(),
-                ancestors, // Valid here
-                ...goalData, // goalData (without ancestors) spread here
             };
 
-            if (goal.parentId) {
+            if (goalData.parentId) {
+                let createdGoal: Goal | null = null;
                 await runTransaction(db, async (transaction) => {
+                    const parentRef = doc(db, "goals", goalData.parentId);
+                    const parentSnap = await transaction.get(parentRef);
+                    if (!parentSnap.exists()) {
+                        throw new Error("Parent goal not found");
+                    }
+
+                    const parentData = parentSnap.data() as Goal;
+                    await assertCanAccessGoalTx(transaction, parentData, user.uid);
+
+                    const ancestors = sanitizeIds([...(parentData.ancestors ?? []), parentData.id]);
+
+                    const goal: Goal = {
+                        ...baseGoal,
+                        ...goalData,
+                        parentId: parentData.id,
+                        ancestors,
+                        groupId: parentData.groupId ?? null,
+                    };
+
                     transaction.set(doc(db, "goals", goalId), goal);
 
                     // Only STEPS count toward totalSteps (not sub-goals)
                     // This ensures progress % is based on completed steps / total steps
                     if (goal.type === 'step') {
-                        const allAncestorIds = [...ancestors];
-                        if (goal.parentId && !allAncestorIds.includes(goal.parentId)) {
-                            allAncestorIds.push(goal.parentId);
-                        }
-
-                        allAncestorIds.forEach(ancestorId => {
+                        ancestors.forEach(ancestorId => {
                             const ancestorRef = doc(db, "goals", ancestorId);
                             transaction.update(ancestorRef, {
                                 totalSteps: increment(1)
                             });
                         });
                     }
-                });
-            } else {
-                await setDoc(doc(db, "goals", goalId), goal);
-            }
 
-            return goal;
+                    createdGoal = goal;
+                });
+                if (!createdGoal) {
+                    throw new Error("Failed to create goal");
+                }
+                return createdGoal;
+            } else {
+                const groupId = goalData.groupId ?? null;
+                if (groupId) {
+                    const allowed = await isGroupMember(groupId, user.uid);
+                    if (!allowed) {
+                        throw new Error("Not authorized to add goals to this group");
+                    }
+                }
+
+                const goal: Goal = {
+                    ...baseGoal,
+                    ...goalData,
+                    parentId: null,
+                    ancestors: [],
+                    groupId,
+                };
+
+                await setDoc(doc(db, "goals", goalId), goal);
+                return goal;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -65,10 +157,12 @@ export function useCreateGoal() {
 }
 
 export function useDeleteGoal() {
+    const { user } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ goalId }: { goalId: string; ancestors: string[] }) => {
+            if (!user) throw new Error("User not authenticated");
             const goalRef = doc(db, "goals", goalId);
 
             // Query for all children (where ancestors contains goalId)
@@ -80,7 +174,9 @@ export function useDeleteGoal() {
                 if (!goalDoc.exists()) return;
                 const goalData = goalDoc.data() as Goal;
 
-                const survivingAncestors = (goalData.ancestors || []).filter((id): id is string => id != null && id !== '');
+                await assertCanAccessGoalTx(transaction, goalData, user.uid);
+
+                const survivingAncestors = sanitizeIds(goalData.ancestors || []);
 
                 // Calculate stats to remove from surviving ancestors
                 let totalStepsToRemove = 0;
@@ -124,11 +220,13 @@ export function useDeleteGoal() {
 }
 
 export function useToggleStep() {
+    const { user } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ stepId, ancestors, isCompleted }: { stepId: string; ancestors: string[]; isCompleted: boolean }) => {
+        mutationFn: async ({ stepId, isCompleted }: { stepId: string; ancestors: string[]; isCompleted: boolean }) => {
             console.log("Mutation started for:", stepId, "Target status completed:", isCompleted);
+            if (!user) throw new Error("User not authenticated");
             const stepRef = doc(db, "goals", stepId);
 
             try {
@@ -136,7 +234,14 @@ export function useToggleStep() {
                     const stepDoc = await transaction.get(stepRef);
                     if (!stepDoc.exists()) throw new Error("Step not found");
 
-                    const currentStatus = stepDoc.data().status;
+                    const stepData = stepDoc.data() as Goal;
+                    await assertCanAccessGoalTx(transaction, stepData, user.uid);
+
+                    if (stepData.type !== 'step') {
+                        throw new Error("Target goal is not a step");
+                    }
+
+                    const currentStatus = stepData.status;
                     const targetStatus = isCompleted ? 'completed' : 'active';
 
                     // CRITICAL: Integrity check. 
@@ -148,12 +253,11 @@ export function useToggleStep() {
                         status: targetStatus
                     });
 
-                    // Propagate to ALL ancestors
-                    // ancestors is array of IDs.
+                    // Propagate to ALL ancestors (from server data, not client input)
                     const delta = isCompleted ? 1 : -1;
 
                     // Filter out null/undefined values to prevent Firebase errors
-                    const validAncestors = ancestors.filter((id): id is string => id != null && id !== '');
+                    const validAncestors = sanitizeIds(stepData.ancestors || []);
 
                     validAncestors.forEach(ancestorId => {
                         const ancestorRef = doc(db, "goals", ancestorId);
@@ -184,7 +288,7 @@ export function useToggleStep() {
                         if (g.id === stepId) {
                             return { ...g, status: isCompleted ? 'completed' : 'active' };
                         }
-                        const validAncestors = ancestors.filter((id): id is string => id != null && id !== '');
+                        const validAncestors = sanitizeIds(ancestors);
                         if (validAncestors.includes(g.id)) {
                             return {
                                 ...g,
@@ -209,14 +313,27 @@ export function useToggleStep() {
 }
 
 export function useMarkGoalComplete() {
+    const { user } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ goalId, isCompleted }: { goalId: string; isCompleted: boolean }) => {
+            if (!user) throw new Error("User not authenticated");
             const goalRef = doc(db, "goals", goalId);
-            await setDoc(goalRef, {
-                status: isCompleted ? 'completed' : 'active'
-            }, { merge: true });
+            await runTransaction(db, async (transaction) => {
+                const goalSnap = await transaction.get(goalRef);
+                if (!goalSnap.exists()) {
+                    throw new Error("Goal not found");
+                }
+                const goalData = goalSnap.data() as Goal;
+                await assertCanAccessGoalTx(transaction, goalData, user.uid);
+                if (goalData.type === 'step') {
+                    throw new Error("Use step toggle for steps");
+                }
+                transaction.update(goalRef, {
+                    status: isCompleted ? 'completed' : 'active'
+                });
+            });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -225,19 +342,27 @@ export function useMarkGoalComplete() {
 }
 
 export function useReorderGoals() {
+    const { user } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ items }: { items: { id: string; order: number }[] }) => {
+            if (!user) throw new Error("User not authenticated");
             if (items.length === 0) return;
 
-            const batch = writeBatch(db);
-            items.forEach(item => {
-                const ref = doc(db, 'goals', item.id);
-                batch.update(ref, { order: item.order });
+            await runTransaction(db, async (transaction) => {
+                const groupCache = new Map<string, boolean>();
+                for (const item of items) {
+                    const ref = doc(db, 'goals', item.id);
+                    const snap = await transaction.get(ref);
+                    if (!snap.exists()) {
+                        throw new Error("Goal not found");
+                    }
+                    const goalData = snap.data() as Goal;
+                    await assertCanAccessGoalTx(transaction, goalData, user.uid, groupCache);
+                    transaction.update(ref, { order: item.order });
+                }
             });
-
-            await batch.commit();
         },
         onMutate: async ({ items }) => {
             await queryClient.cancelQueries({ queryKey: ["goals"] });

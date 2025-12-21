@@ -26,9 +26,17 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
     const { mutate: createGoal, isPending } = useCreateGoal();
     const { data: groups } = useGroups();
 
+    const parseDateInput = (value: string) => {
+        const [year, month, day] = value.split("-").map(Number);
+        if (!year || !month || !day) return null;
+        return new Date(year, month - 1, day);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!title.trim()) return;
+
+        const parsedDeadline = deadline ? parseDateInput(deadline) : null;
 
         createGoal({
             title: title.trim(),
@@ -37,7 +45,7 @@ export function CreateGoalModal({ parentId, parentAncestors, isOpen, onClose, al
             parentId,
             parentAncestors,
             groupId: selectedGroupId || null,
-            deadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
+            deadline: parsedDeadline ? Timestamp.fromDate(parsedDeadline) : null,
         }, {
             onSuccess: () => {
                 onClose();

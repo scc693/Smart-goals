@@ -26,7 +26,9 @@ import { useReorderGoals } from "@/hooks/useMutations";
 
 export default function Dashboard() {
     const { logout, user } = useAuth();
-    const { data: goals, isLoading } = useGoals();
+    const { data: groups } = useGroups();
+    const groupIds = useMemo(() => groups?.map(group => group.id) ?? [], [groups]);
+    const { data: goals, isLoading } = useGoals({ groupIds });
     const [showCompleted, setShowCompleted] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newGoalParentId, setNewGoalParentId] = useState<string | null>(null);
@@ -36,8 +38,6 @@ export default function Dashboard() {
     // Tab State
     const [activeTab, setActiveTab] = useState<'personal' | 'groups'>('personal');
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-    const { data: groups } = useGroups();
-
     const selectedGroup = groups?.find(g => g.id === selectedGroupId);
 
     // DnD Sensors
