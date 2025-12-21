@@ -18,3 +18,8 @@ A "Materialized Path" based goal tracking app with Offline-First capabilities an
 - Optimistic UI Updates
 - Group Sharing
 - PWA Installable
+
+## Documentation
+- [API Documentation](docs/API.md) - Details on hooks and utilities.
+- [Component Documentation](docs/COMPONENTS.md) - Prop interfaces and descriptions for UI components.
+- [Development Snapshot](snapshot.md) - Current state of the project.
