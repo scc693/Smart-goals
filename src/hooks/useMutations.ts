@@ -14,9 +14,7 @@ export function useCreateGoal() {
 
             const goalId = doc(collection(db, "goals")).id;
             // Calculate new ancestors
-            const ancestors = newGoal.parentAncestors
-                ? [...newGoal.parentAncestors, newGoal.parentId!]
-                : [];
+            const ancestors = newGoal.parentAncestors || [];
 
             // Destructure to separate helpers from data
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

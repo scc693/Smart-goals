@@ -1,4 +1,3 @@
-```typescript
 import { useState } from "react";
 import type { GoalWithChildren } from "@/lib/tree-utils";
 import { useToggleStep, useDeleteGoal } from "@/hooks/useMutations";
@@ -13,7 +12,7 @@ interface GoalCardProps {
 
 export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
     // Debug log for hierarchy level
-    // console.log(`GoalCard: ${ goal.title } (${ goal.type }) - Level: ${ level } `);
+    // console.log(`GoalCard: ${goal.title} (${goal.type}) - Level: ${level}`);
 
     const [expanded, setExpanded] = useState(true);
     const { mutate: toggleStep } = useToggleStep();
@@ -117,7 +116,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                             />
                             <path
                                 className={progressColor.replace('text-', 'stroke-')}
-                                strokeDasharray={`${ progress }, 100`}
+                                strokeDasharray={`${progress}, 100`}
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
                                 stroke="currentColor"
@@ -144,4 +143,3 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
         </div>
     );
 }
-```
