@@ -33,11 +33,21 @@ export function useCreateGoal() {
             };
 
             if (goal.parentId) {
-                const parentRef = doc(db, "goals", goal.parentId);
                 await runTransaction(db, async (transaction) => {
                     transaction.set(doc(db, "goals", goalId), goal);
-                    transaction.update(parentRef, {
-                        totalSteps: increment(1)
+
+                    // Increment totalSteps on ALL ancestors (not just direct parent)
+                    // This matches how completedSteps propagates when a step is completed
+                    const allAncestorIds = [...ancestors];
+                    if (goal.parentId && !allAncestorIds.includes(goal.parentId)) {
+                        allAncestorIds.push(goal.parentId);
+                    }
+
+                    allAncestorIds.forEach(ancestorId => {
+                        const ancestorRef = doc(db, "goals", ancestorId);
+                        transaction.update(ancestorRef, {
+                            totalSteps: increment(1)
+                        });
                     });
                 });
             } else {
@@ -75,14 +85,17 @@ export function useDeleteGoal() {
                     transaction.delete(doc.ref);
                 });
 
-                // If the deleted goal had a parent, update parent's totalSteps and completedSteps
-                if (goalData.parentId) {
-                    const parentRef = doc(db, "goals", goalData.parentId);
-                    transaction.update(parentRef, {
+                // Decrement totalSteps and completedSteps on ALL ancestors (not just direct parent)
+                // Filter out invalid ancestor IDs
+                const validAncestors = (goalData.ancestors || []).filter((id): id is string => id != null && id !== '');
+
+                validAncestors.forEach(ancestorId => {
+                    const ancestorRef = doc(db, "goals", ancestorId);
+                    transaction.update(ancestorRef, {
                         totalSteps: increment(-1),
                         completedSteps: increment(goalData.status === 'completed' ? -1 : 0)
                     });
-                }
+                });
             });
         },
         onSuccess: () => {
