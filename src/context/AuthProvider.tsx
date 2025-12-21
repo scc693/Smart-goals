@@ -16,12 +16,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const signInWithGoogle = async () => {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Sign in failed:", error);
+            throw error; // Re-throw so callers can handle if needed
+        }
     };
 
     const logout = async () => {
-        await signOut(auth);
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Sign out failed:", error);
+            throw error;
+        }
     };
 
     return (

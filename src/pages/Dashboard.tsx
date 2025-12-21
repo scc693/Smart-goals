@@ -148,7 +148,7 @@ export default function Dashboard() {
                                 <img src={user.photoURL} alt="User" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center text-blue-600 font-bold">
-                                    {user?.email?.[0].toUpperCase()}
+                                    {user?.email?.[0]?.toUpperCase() ?? "?"}
                                 </div>
                             )}
                         </div>

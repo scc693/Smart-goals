@@ -60,7 +60,12 @@ export function GroupsManager({ onSelectGroup }: { onSelectGroup?: (groupId: str
                             {copiedId === group.id ? "Copied" : "ID"}
                         </button>
                         <button
-                            onClick={() => deleteGroup(group.id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Are you sure you want to delete this group?")) {
+                                    deleteGroup(group.id);
+                                }
+                            }}
                             className="ml-2 text-gray-400 hover:text-red-500"
                             title="Delete Group"
                         >

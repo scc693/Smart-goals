@@ -64,7 +64,21 @@ export function useDeleteGroup() {
     return useMutation({
         mutationFn: async (groupId: string) => {
             if (!user) throw new Error("Not authenticated");
-            await deleteDoc(doc(db, "groups", groupId));
+
+            // Verify ownership before deletion
+            const groupRef = doc(db, "groups", groupId);
+            const groupSnap = await getDoc(groupRef);
+
+            if (!groupSnap.exists()) {
+                throw new Error("Group not found");
+            }
+
+            const groupData = groupSnap.data();
+            if (groupData.createdBy !== user.uid) {
+                throw new Error("Only the group creator can delete this group");
+            }
+
+            await deleteDoc(groupRef);
             return groupId;
         },
         onSuccess: () => {
