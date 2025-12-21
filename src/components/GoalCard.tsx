@@ -21,6 +21,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
     const progressColor = progress === 100 ? 'text-green-500' : progress > 50 ? 'text-yellow-500' : 'text-blue-500';
 
     const handleToggle = () => {
+        console.log("Toggling step:", goal.id, "Current status:", goal.status, "Ancestors:", goal.ancestors);
         toggleStep({
             stepId: goal.id,
             ancestors: goal.ancestors,

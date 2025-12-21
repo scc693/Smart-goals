@@ -97,35 +97,41 @@ export function useToggleStep() {
 
     return useMutation({
         mutationFn: async ({ stepId, ancestors, isCompleted }: { stepId: string; ancestors: string[]; isCompleted: boolean }) => {
+            console.log("Mutation started for:", stepId, "Target status completed:", isCompleted);
             const stepRef = doc(db, "goals", stepId);
 
-            await runTransaction(db, async (transaction) => {
-                const stepDoc = await transaction.get(stepRef);
-                if (!stepDoc.exists()) throw new Error("Step not found");
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const stepDoc = await transaction.get(stepRef);
+                    if (!stepDoc.exists()) throw new Error("Step not found");
 
-                const currentStatus = stepDoc.data().status;
-                const targetStatus = isCompleted ? 'completed' : 'active';
+                    const currentStatus = stepDoc.data().status;
+                    const targetStatus = isCompleted ? 'completed' : 'active';
 
-                // CRITICAL: Integrity check. 
-                // If we want to set to 'completed' but it's ALREADY 'completed', do nothing.
-                // This prevents the double-counting bug.
-                if (currentStatus === targetStatus) return;
+                    // CRITICAL: Integrity check. 
+                    // If we want to set to 'completed' but it's ALREADY 'completed', do nothing.
+                    // This prevents the double-counting bug.
+                    if (currentStatus === targetStatus) return;
 
-                transaction.update(stepRef, {
-                    status: targetStatus
-                });
+                    transaction.update(stepRef, {
+                        status: targetStatus
+                    });
 
-                // Propagate to ALL ancestors
-                // ancestors is array of IDs.
-                const delta = isCompleted ? 1 : -1;
+                    // Propagate to ALL ancestors
+                    // ancestors is array of IDs.
+                    const delta = isCompleted ? 1 : -1;
 
-                ancestors.forEach(ancestorId => {
-                    const ancestorRef = doc(db, "goals", ancestorId);
-                    transaction.update(ancestorRef, {
-                        completedSteps: increment(delta)
+                    ancestors.forEach(ancestorId => {
+                        const ancestorRef = doc(db, "goals", ancestorId);
+                        transaction.update(ancestorRef, {
+                            completedSteps: increment(delta)
+                        });
                     });
                 });
-            });
+            } catch (error) {
+                console.error("Mutation failed:", error);
+                throw error;
+            }
         },
         onMutate: async ({ stepId, ancestors, isCompleted }) => {
             await queryClient.cancelQueries({ queryKey: ["goals"] });
