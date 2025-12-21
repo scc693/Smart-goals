@@ -5,6 +5,7 @@ import { buildGoalTree } from "@/lib/tree-utils";
 import { SortableGoalCard } from "@/components/SortableGoalCard";
 import { CreateGoalModal } from "@/components/CreateGoalModal";
 import { GroupsManager } from "@/components/GroupsManager";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import { Plus, Layout, Users, ChevronLeft } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
 import { UserStatsCard } from "@/components/UserStatsCard";
@@ -217,6 +218,10 @@ export default function Dashboard() {
                     <GroupsManager onSelectGroup={(id) => setSelectedGroupId(id)} />
                 ) : (
                     <>
+                        {/* Activity Feed for Group View */}
+                        {selectedGroupId && (
+                            <ActivityFeed groupId={selectedGroupId} className="mb-6" />
+                        )}
 
                         {isLoading ? (
                             <div className="space-y-4">

@@ -40,4 +40,43 @@ export interface UserStats {
     streak: number;          // Current streak (days)
     lastActiveDate: string;  // YYYY-MM-DD format
     createdAt: Timestamp | FieldValue;
+    focusStatus?: FocusStatus | null;
+}
+
+export interface FocusStatus {
+    goalId: string;
+    goalTitle: string;
+    startedAt: Timestamp;
+}
+
+export interface Activity {
+    id: string;
+    type: 'completion' | 'level_up' | 'verification_request' | 'verification_approved';
+    userId: string;
+    userName: string;
+    userAvatar: string | null;
+    groupId: string;
+    goalId?: string;
+    goalTitle?: string;
+    metadata?: {
+        photoURL?: string;
+        xpGained?: number;
+        level?: number;
+    };
+    timestamp: Timestamp | FieldValue;
+}
+
+export interface Verification {
+    id: string;
+    goalId: string;
+    requesterId: string;
+    requesterName: string;
+    proofUrl?: string;
+    proofText?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    approverId?: string;
+    approverName?: string;
+    xpReward: number;
+    createdAt: Timestamp | FieldValue;
+    resolvedAt?: Timestamp;
 }
