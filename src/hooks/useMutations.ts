@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { collection, doc, setDoc, increment, serverTimestamp, runTransaction } from "firebase/firestore";
+import { collection, doc, setDoc, increment, serverTimestamp, runTransaction, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthProvider";
 import type { Goal } from "@/types";
@@ -53,38 +53,98 @@ export function useCreateGoal() {
     });
 }
 
+export function useDeleteGoal() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ goalId, ancestors }: { goalId: string; ancestors: string[] }) => {
+            const goalRef = doc(db, "goals", goalId);
+
+            // Query for all children (where ancestors contains goalId)
+            const q = query(collection(db, "goals"), where("ancestors", "array-contains", goalId));
+            const snapshot = await getDocs(q);
+
+            await runTransaction(db, async (transaction) => {
+                const goalDoc = await transaction.get(goalRef);
+                if (!goalDoc.exists()) return;
+                const goalData = goalDoc.data() as Goal;
+
+                transaction.delete(goalRef); // Delete the goal itself
+
+                // Delete all children
+                snapshot.docs.forEach(doc => {
+                    transaction.delete(doc.ref);
+                });
+
+                // If the deleted goal had a parent, update parent's totalSteps and completedSteps
+                if (goalData.parentId) {
+                    const parentRef = doc(db, "goals", goalData.parentId);
+                    transaction.update(parentRef, {
+                        totalSteps: increment(-1),
+                        completedSteps: increment(goalData.status === 'completed' ? -1 : 0)
+                    });
+                }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["goals"] });
+        },
+    });
+}
+
 export function useToggleStep() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ stepId, parentId, isCompleted }: { stepId: string; parentId: string; isCompleted: boolean }) => {
+        mutationFn: async ({ stepId, ancestors, isCompleted }: { stepId: string; ancestors: string[]; isCompleted: boolean }) => {
             const stepRef = doc(db, "goals", stepId);
-            const parentRef = doc(db, "goals", parentId);
 
             await runTransaction(db, async (transaction) => {
+                const stepDoc = await transaction.get(stepRef);
+                if (!stepDoc.exists()) throw new Error("Step not found");
+
+                const currentStatus = stepDoc.data().status;
+                const targetStatus = isCompleted ? 'completed' : 'active';
+
+                // CRITICAL: Integrity check. 
+                // If we want to set to 'completed' but it's ALREADY 'completed', do nothing.
+                // This prevents the double-counting bug.
+                if (currentStatus === targetStatus) return;
+
                 transaction.update(stepRef, {
-                    status: isCompleted ? 'completed' : 'active'
+                    status: targetStatus
                 });
-                transaction.update(parentRef, {
-                    completedSteps: increment(isCompleted ? 1 : -1)
+
+                // Propagate to ALL ancestors
+                // ancestors is array of IDs.
+                const delta = isCompleted ? 1 : -1;
+
+                ancestors.forEach(ancestorId => {
+                    const ancestorRef = doc(db, "goals", ancestorId);
+                    transaction.update(ancestorRef, {
+                        completedSteps: increment(delta)
+                    });
                 });
             });
         },
-        // Optimistic updates omitted for brevity in fix if they caused issues, but usually fine. 
-        // The previous implementation had type errors in onMutate/onError context.
-        // I'll keep the logic but fix types.
-        onMutate: async ({ stepId, parentId, isCompleted }) => {
+        onMutate: async ({ stepId, ancestors, isCompleted }) => {
             await queryClient.cancelQueries({ queryKey: ["goals"] });
             const previousGoals = queryClient.getQueryData<Goal[]>(["goals"]);
 
             if (previousGoals) {
                 queryClient.setQueryData<Goal[]>(["goals"], (old) => {
                     if (!old) return [];
+                    // Check if update is valid relative to cache to avoid local double-count visual
+                    const target = old.find(g => g.id === stepId);
+                    if (target && target.status === (isCompleted ? 'completed' : 'active')) {
+                        return old; // No change needed
+                    }
+
                     return old.map(g => {
                         if (g.id === stepId) {
                             return { ...g, status: isCompleted ? 'completed' : 'active' };
                         }
-                        if (g.id === parentId) {
+                        if (ancestors.includes(g.id)) {
                             return {
                                 ...g,
                                 completedSteps: g.completedSteps + (isCompleted ? 1 : -1)
@@ -96,7 +156,7 @@ export function useToggleStep() {
             }
             return { previousGoals };
         },
-        onError: (_err, _newTodo, context) => { // Fixed unused vars
+        onError: (_err, _newTodo, context) => {
             if (context?.previousGoals) {
                 queryClient.setQueryData(["goals"], context.previousGoals);
             }
@@ -106,3 +166,4 @@ export function useToggleStep() {
         }
     });
 }
+```

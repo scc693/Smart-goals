@@ -10,16 +10,32 @@ import { Plus, Layout } from "lucide-react";
 export default function Dashboard() {
     const { logout, user } = useAuth();
     const { data: goals, isLoading } = useGoals();
-
+    const [showCompleted, setShowCompleted] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalParentId, setModalParentId] = useState<string | null>(null);
-    const [modalAncestors, setModalAncestors] = useState<string[]>([]);
+    const [newGoalParentId, setNewGoalParentId] = useState<string | null>(null);
+    const [newGoalAncestors, setNewGoalAncestors] = useState<string[]>([]);
 
-    const goalTree = useMemo(() => goals ? buildGoalTree(goals) : [], [goals]);
+    // Filter goals based on completion status (for root goals)
+    // Note: If a sub-goal is active but root is completed, hiding root hides everything.
+    // Standard behavior for tree views usually.
+    const visibleGoals = useMemo(() => {
+        if (!goals) return [];
+        return goals.filter(g => {
+            if (showCompleted) return true;
+            // If hiding completed, hide if status is completed AND it's a root goal (parentId null).
+            // For children, we can decide: do we hide completed steps in an active goal?
+            // User asked: "marking them all as completed doesn't archive the goal".
+            // This implies hiding the *completed Root Goal*.
+            if (!g.parentId && g.status === 'completed') return false;
+            return true;
+        });
+    }, [goals, showCompleted]);
+
+    const goalTree = useMemo(() => buildGoalTree(visibleGoals), [visibleGoals]);
 
     const handleAddGoal = (parentId: string | null = null, ancestors: string[] = []) => {
-        setModalParentId(parentId);
-        setModalAncestors(ancestors);
+        setNewGoalParentId(parentId);
+        setNewGoalAncestors(ancestors);
         setIsModalOpen(true);
     };
 
