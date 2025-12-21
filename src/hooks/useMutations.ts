@@ -80,28 +80,40 @@ export function useDeleteGoal() {
                 if (!goalDoc.exists()) return;
                 const goalData = goalDoc.data() as Goal;
 
-                transaction.delete(goalRef); // Delete the goal itself
+                const survivingAncestors = (goalData.ancestors || []).filter((id): id is string => id != null && id !== '');
 
-                // Delete all children
+                // Calculate stats to remove from surviving ancestors
+                let totalStepsToRemove = 0;
+                let completedStepsToRemove = 0;
+
+                // Check the target goal itself
+                if (goalData.type === 'step') {
+                    totalStepsToRemove++;
+                    if (goalData.status === 'completed') completedStepsToRemove++;
+                }
+
+                // Check all descendants
                 snapshot.docs.forEach(doc => {
+                    const data = doc.data() as Goal;
+                    if (data.type === 'step') {
+                        totalStepsToRemove++;
+                        if (data.status === 'completed') completedStepsToRemove++;
+                    }
                     transaction.delete(doc.ref);
                 });
 
-                // Only STEPS affect totalSteps (matching creation logic)
-                // Decrement counters on ALL ancestors
-                const validAncestors = (goalData.ancestors || []).filter((id): id is string => id != null && id !== '');
+                // Delete the target goal
+                transaction.delete(goalRef);
 
-                if (goalData.type === 'step') {
-                    validAncestors.forEach(ancestorId => {
+                // Update surviving ancestors if there are stats to remove
+                if (totalStepsToRemove > 0 || completedStepsToRemove > 0) {
+                    survivingAncestors.forEach(ancestorId => {
                         const ancestorRef = doc(db, "goals", ancestorId);
                         transaction.update(ancestorRef, {
-                            totalSteps: increment(-1),
-                            completedSteps: increment(goalData.status === 'completed' ? -1 : 0)
+                            totalSteps: increment(-totalStepsToRemove),
+                            completedSteps: increment(-completedStepsToRemove)
                         });
                     });
-                } else if (goalData.status === 'completed') {
-                    // If a completed goal/sub-goal is deleted, we don't decrement totalSteps
-                    // but we might need to handle children's completedSteps - they're deleted so counters auto-adjust
                 }
             });
         },
