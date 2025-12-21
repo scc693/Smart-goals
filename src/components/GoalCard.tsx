@@ -86,7 +86,7 @@ export function GoalCard({ goal, onAddSubGoal, level = 0 }: GoalCardProps) {
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {!isStep && (
                         <button
-                            onClick={() => onAddSubGoal(goal.id, [...goal.ancestors, goal.id], level)}
+                            onClick={() => onAddSubGoal(goal.id, [...goal.ancestors.filter(id => id != null && id !== ''), goal.id], level)}
                             className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
                             title="Add Sub-goal"
                         >

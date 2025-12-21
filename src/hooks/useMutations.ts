@@ -13,8 +13,9 @@ export function useCreateGoal() {
             if (!user) throw new Error("User not authenticated");
 
             const goalId = doc(collection(db, "goals")).id;
-            // Calculate new ancestors
-            const ancestors = newGoal.parentAncestors || [];
+            // Sanitize ancestors: remove nulls, empty strings, and duplicates
+            const rawAncestors = newGoal.parentAncestors || [];
+            const ancestors = [...new Set(rawAncestors.filter((id): id is string => id != null && id !== ''))];
 
             // Destructure to separate helpers from data
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -119,7 +120,10 @@ export function useToggleStep() {
                     // ancestors is array of IDs.
                     const delta = isCompleted ? 1 : -1;
 
-                    ancestors.forEach(ancestorId => {
+                    // Filter out null/undefined values to prevent Firebase errors
+                    const validAncestors = ancestors.filter((id): id is string => id != null && id !== '');
+
+                    validAncestors.forEach(ancestorId => {
                         const ancestorRef = doc(db, "goals", ancestorId);
                         transaction.update(ancestorRef, {
                             completedSteps: increment(delta)
@@ -148,7 +152,8 @@ export function useToggleStep() {
                         if (g.id === stepId) {
                             return { ...g, status: isCompleted ? 'completed' : 'active' };
                         }
-                        if (ancestors.includes(g.id)) {
+                        const validAncestors = ancestors.filter((id): id is string => id != null && id !== '');
+                        if (validAncestors.includes(g.id)) {
                             return {
                                 ...g,
                                 completedSteps: g.completedSteps + (isCompleted ? 1 : -1)
