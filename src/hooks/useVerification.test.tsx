@@ -36,7 +36,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     doc: (...args: unknown[]) => doc(...args),
     serverTimestamp: () => serverTimestamp(),
     runTransaction: (...args: unknown[]) => runTransaction(...args),
-    increment: (...args: unknown[]) => increment(...args),
+    increment: (...args: unknown[]) => increment(args[0] as number),
   };
 });
 

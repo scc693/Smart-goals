@@ -55,7 +55,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     getDocs: (...args: unknown[]) => getDocs(...args),
     query: (...args: unknown[]) => query(...args),
     where: (...args: unknown[]) => where(...args),
-    arrayUnion: (...args: unknown[]) => arrayUnion(...args),
+    arrayUnion: (...args: unknown[]) => arrayUnion(args[0] as string),
     serverTimestamp: () => serverTimestamp(),
   };
 });

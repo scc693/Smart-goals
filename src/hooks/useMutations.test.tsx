@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useReorderGoals, useToggleStep } from "@/hooks/useMutations";
 import type { Goal } from "@/types";
+import type { Timestamp } from "firebase/firestore";
 
 const { runTransaction, doc } = vi.hoisted(() => ({
   runTransaction: vi.fn(),
@@ -63,7 +64,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 0,
         completedSteps: 0,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
       },
       {
         id: "goal-1",
@@ -78,7 +79,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 1,
         completedSteps: 0,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
       },
     ];
 
@@ -120,7 +121,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 0,
         completedSteps: 0,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
       },
       {
         id: "goal-1",
@@ -135,7 +136,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 1,
         completedSteps: 2,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
       },
     ];
 
@@ -176,7 +177,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 0,
         completedSteps: 0,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
         order: 2,
       },
       {
@@ -192,7 +193,7 @@ describe("useMutations optimistic updates", () => {
         totalSteps: 0,
         completedSteps: 0,
         deadline: null,
-        createdAt: null,
+        createdAt: null as unknown as Timestamp,
         order: 1,
       },
     ];

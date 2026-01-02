@@ -3,17 +3,138 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 1, 19);
+    // ============================================
+    // Helper Functions
+    // ============================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Get the current user's UID
+    function userId() {
+      return request.auth.uid;
+    }
+
+    // Check if user is a member of a group
+    function isGroupMember(groupId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && userId() in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    }
+
+    // Check if user has access to a goal (owner, shared, or group member)
+    function canAccessGoal(goalData) {
+      return isAuthenticated() && (
+        goalData.userId == userId() ||
+        userId() in goalData.sharedWith ||
+        (goalData.groupId != null && isGroupMember(goalData.groupId))
+      );
+    }
+
+    // ============================================
+    // Goals Collection
+    // ============================================
+    match /goals/{goalId} {
+      // Read: owner, shared with user, or group member
+      allow read: if isAuthenticated() && canAccessGoal(resource.data);
+
+      // Create: authenticated user creating their own goal
+      // If groupId is set, user must be a group member
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == userId()
+        && (
+          request.resource.data.groupId == null ||
+          isGroupMember(request.resource.data.groupId)
+        );
+
+      // Update: user has access to the goal
+      allow update: if canAccessGoal(resource.data);
+
+      // Delete: user has access to the goal
+      allow delete: if canAccessGoal(resource.data);
+    }
+
+    // ============================================
+    // Groups Collection
+    // ============================================
+    match /groups/{groupId} {
+      // Read: only group members can read
+      allow read: if isAuthenticated()
+        && userId() in resource.data.members;
+
+      // Create: any authenticated user can create a group
+      // They must be the creator and first member
+      allow create: if isAuthenticated()
+        && request.resource.data.createdBy == userId()
+        && userId() in request.resource.data.members;
+
+      // Update: only group members can update
+      // This allows adding new members via arrayUnion
+      allow update: if isAuthenticated()
+        && userId() in resource.data.members;
+
+      // Delete: only the creator can delete
+      allow delete: if isAuthenticated()
+        && resource.data.createdBy == userId();
+    }
+
+    // ============================================
+    // User Stats Collection
+    // ============================================
+    match /userStats/{statsId} {
+      // Read/Write: only the owner can access their stats
+      allow read, write: if isAuthenticated()
+        && statsId == userId();
+    }
+
+    // ============================================
+    // Activities Collection
+    // ============================================
+    match /activities/{activityId} {
+      // Read: user must be a member of the activity's group
+      allow read: if isAuthenticated()
+        && resource.data.groupId != null
+        && isGroupMember(resource.data.groupId);
+
+      // Create: authenticated user creating activity for a group they belong to
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == userId()
+        && request.resource.data.groupId != null
+        && isGroupMember(request.resource.data.groupId);
+
+      // Activities are immutable - no updates or deletes
+      allow update, delete: if false;
+    }
+
+    // ============================================
+    // Verifications Collection
+    // ============================================
+    match /verifications/{verificationId} {
+      // Read: requester or group member of the associated goal's group
+      allow read: if isAuthenticated() && (
+        resource.data.requesterId == userId() ||
+        (
+          exists(/databases/$(database)/documents/goals/$(resource.data.goalId)) &&
+          isGroupMember(get(/databases/$(database)/documents/goals/$(resource.data.goalId)).data.groupId)
+        )
+      );
+
+      // Create: authenticated user creating verification for their own goal
+      allow create: if isAuthenticated()
+        && request.resource.data.requesterId == userId()
+        && request.resource.data.status == 'pending';
+
+      // Update: group member can approve/reject, but not the requester (can't self-verify)
+      allow update: if isAuthenticated()
+        && resource.data.requesterId != userId()
+        && exists(/databases/$(database)/documents/goals/$(resource.data.goalId))
+        && isGroupMember(get(/databases/$(database)/documents/goals/$(resource.data.goalId)).data.groupId)
+        && resource.data.status == 'pending';
+
+      // Verifications cannot be deleted
+      allow delete: if false;
     }
   }
 }
